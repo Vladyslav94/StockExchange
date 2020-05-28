@@ -6,12 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
-import org.springframework.core.task.TaskExecutor;
-import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-
 import java.io.IOException;
+import java.sql.SQLException;
 
 
 @SpringBootApplication
@@ -28,6 +24,7 @@ public class StartStockApp implements CommandLineRunner {
 
 
     public void run(String... args) throws Exception {
+//        getDataFromWeb.connectToDB();
         Runnable runnable1 = new Runnable() {
             @Override
             public void run() {
@@ -53,7 +50,7 @@ public class StartStockApp implements CommandLineRunner {
                     e.printStackTrace();
                 } catch (IOException e) {
                     e.printStackTrace();
-                } catch (JSONException e) {
+                } catch (JSONException | SQLException e) {
                     e.printStackTrace();
                 }
             }
@@ -62,6 +59,7 @@ public class StartStockApp implements CommandLineRunner {
 
         thread1.start();
         thread2.start();
+
 
     }
 
