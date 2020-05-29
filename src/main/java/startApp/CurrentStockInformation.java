@@ -1,0 +1,47 @@
+package startApp;
+
+public class CurrentStockInformation {
+    static String symbol = "symbol";
+    static String companyName = "companyName";
+    static String calculationPrice = "calculationPrice";
+    static String open = "open";
+    static String openTime = "openTime";
+    static String close = "close";
+    static String closeTime = "closeTime";
+    static String high = "high";
+    static String low = "low";
+    static String latestPrice = "latestPrice";
+    static String latestSource = "latestSource";
+    static String latestTime = "latestTime";
+    static String latestUpdate = "latestUpdate";
+    static String latestVolume = "latestVolume";
+    static String volume = "volume";
+    static String iexRealtimePrice = "iexRealtimePrice";
+    static String iexLastUpdated = "iexLastUpdated";
+    static String delayedPrice = "delayedPrice";
+    static String delayedPriceTime = "delayedPriceTime";
+    static String oddLotDelayedPrice = "oddLotDelayedPrice";
+    static String oddLotDelayedPriceTime = "oddLotDelayedPriceTime";
+    static String extendedPrice = "extendedPrice";
+    static String extendedChange = "extendedChange";
+    static String extendedChangePercent = "extendedChangePercent";
+    static String extendedPriceTime = "extendedPriceTime";
+    static String previousClose = "previousClose";
+    static String previousVolume = "previousVolume";
+    static String change = "change";
+    static String changePercent = "changePercent";
+    static String iexMarketPercent = "iexMarketPercent";
+    static String iexVolume = "iexVolume";
+    static String avgTotalVolume = "avgTotalVolume";
+    static String iexBidPrice = "iexBidPrice";
+    static String iexBidSize = "iexBidSize";
+    static String iexAskPrice = "iexAskPrice";
+    static String iexAskSize = "iexAskSize";
+    static String marketCap = "marketCap";
+    static String week52High = "week52High";
+    static String week52Low = "week52Low";
+    static String ytdChange = "ytdChange";
+    static String peRatio = "peRatio";
+    static String lastTradeTime = "lastTradeTime";
+    static String isUSMarketOpen = "isUSMarketOpen";
+}

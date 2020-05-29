@@ -1,10 +1,9 @@
 package startApp;
 
-import com.mysql.cj.jdbc.MysqlDataSource;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.beans.propertyeditors.CurrencyEditor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -19,9 +18,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 @Service
 public class GetDataFromWeb extends Thread {
-    Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/stock_exchange?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC", "dbadmin", "Theaternimda1");
-    Statement statement = connection.createStatement();
-    static LinkedBlockingQueue<String> storageForEnabledStock =  new LinkedBlockingQueue<String>();
+    final Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/stock_exchange?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC", "dbadmin", "Theaternimda1");
+    final Statement statement = connection.createStatement();
+    static final LinkedBlockingQueue<String> storageForEnabledStock = new LinkedBlockingQueue<>();
 
     public GetDataFromWeb() throws SQLException {
     }
@@ -36,47 +35,47 @@ public class GetDataFromWeb extends Thread {
                 "\topenTime int null,\n" +
                 "\tclose int null,\n" +
                 "\tcloseTime int null,\n" +
-                "\thigh float null,\n" +
-                "\tlow float null,\n" +
-                "\tlatestPrice float null,\n" +
+                "\thigh double null,\n" +
+                "\tlow double null,\n" +
+                "\tlatestPrice double null,\n" +
                 "\tlatestSource varchar(255) null,\n" +
                 "\tlatestTime varchar(255) null,\n" +
-                "\tlatestUpdate int null,\n" +
+                "\tlatestUpdate long null,\n" +
                 "\tlatestVolume int null,\n" +
                 "\tvolume int null,\n" +
-                "\tiexRealtimePrice float null,\n" +
-                "\tiexLastUpdate int null,\n" +
-                "\tdelayedPrice float null,\n" +
+                "\tiexRealtimePrice double null,\n" +
+                "\tiexLastUpdated long null,\n" +
+                "\tdelayedPrice double null,\n" +
                 "\tdelayedPriceTime int null,\n" +
-                "\toddLotDelayedPrice float null,\n" +
+                "\toddLotDelayedPrice double null,\n" +
                 "\toddLotDelayedPriceTime int null,\n" +
-                "\textendedPrice float null,\n" +
-                "\textendedChange float null,\n" +
-                "\textendedChangePercent float null,\n" +
+                "\textendedPrice double null,\n" +
+                "\textendedChange double null,\n" +
+                "\textendedChangePercent double null,\n" +
                 "\textendedPriceTime int null,\n" +
-                "\tpreviousClose float null,\n" +
+                "\tpreviousClose double null,\n" +
                 "\tpreviousVolume int null,\n" +
-                "\t`change` float null,\n" +
-                "\tchangePercent float null,\n" +
-                "\tiexMarketPercent float null,\n" +
+                "\t`change` double null,\n" +
+                "\tchangePercent double null,\n" +
+                "\tiexMarketPercent double null,\n" +
                 "\tiexVolume int null,\n" +
                 "\tavgTotalVolume int null,\n" +
-                "\tiexBidPrice float null,\n" +
+                "\tiexBidPrice double null,\n" +
                 "\tiexBidSize int null,\n" +
-                "\tiexAskPrice float null,\n" +
+                "\tiexAskPrice double null,\n" +
                 "\tiexAskSize int null,\n" +
-                "\tmarketCap int null,\n" +
-                "\tweek52high float null,\n" +
-                "\tweek52Low float null,\n" +
-                "\tytdChange float null,\n" +
-                "\tpeRatio float null,\n" +
-                "\tlastTradeTime int null,\n" +
-                "\tisUsMarketOpen varchar(20) null\n" +
+                "\tmarketCap long null,\n" +
+                "\tweek52High double null,\n" +
+                "\tweek52Low double null,\n" +
+                "\tytdChange double null,\n" +
+                "\tpeRatio double null,\n" +
+                "\tlastTradeTime long null,\n" +
+                "\tisUSMarketOpen BIT null\n" +
                 ");\n" +
                 "\n");
     }
 
-    public void getStockThatEnabled() throws IOException, JSONException, InterruptedException {
+    public void getStockThatEnabled() throws IOException, JSONException {
         //getting json data about stock from remote server, parsing and putting to shared queue
         URL url = new URL("https://sandbox.iexapis.com/stable/ref-data/symbols?token=Tpk_ee567917a6b640bb8602834c9d30e571");
         HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
@@ -107,12 +106,13 @@ public class GetDataFromWeb extends Thread {
                 storageForEnabledStock.offer(name);
             }
         }
-
     }
 
     public void getDataAbout() throws InterruptedException, IOException {
         while (true) {
+            //getting company that is enabled from head of shared queue
             String stockToGet = storageForEnabledStock.take();
+            //send for taking data about current stock
             String linkForTakingDataAboutStock =
                     String.format("https://sandbox.iexapis.com/stable/stock/%s/quote?token=Tpk_ee567917a6b640bb8602834c9d30e571", stockToGet);
             URL url = new URL(linkForTakingDataAboutStock);
@@ -128,32 +128,137 @@ public class GetDataFromWeb extends Thread {
             else {
                 Scanner scanner = new Scanner(url.openStream());
                 while (scanner.hasNext()) {
+                    //getting JSON about stock
                     inline.append(scanner.nextLine());
 
                 }
                 scanner.close();
             }
-
+            //stock JSON process
             JSONObject jsonObject = null;
             try {
-                jsonObject = new JSONObject(inline.toString());
+                jsonObject = new JSONObject(inline.toString().replaceAll("null", "0"));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            String infoAboutStock = null;
+            //setting variables for JSON queries
+            String symbol = null;
+            String companyName = null;
+            String calculationPrice = null;
+            int open = 0;
+            int openTime = 0;
+            int close = 0;
+            int closeTime = 0;
+            double high = 0;
+            double low = 0;
+            double latestPrice = 0;
+            String latestSource = null;
+            String latestTime = null;
+            long latestUpdate = 0;
+            int latestVolume = 0;
+            int volume = 0;
+            double iexRealtimePrice = 0;
+            long iexLastUpdated = 0;
+            double delayedPrice = 0;
+            int delayedPriceTime = 0;
+            double oddLotDelayedPrice = 0;
+            int oddLotDelayedPriceTime = 0;
+            double extendedPrice = 0;
+            double extendedChange = 0;
+            double extendedChangePercent = 0;
+            int extendedPriceTime = 0;
+            double previousClose = 0;
+            int previousVolume = 0;
+            double change = 0;
+            double changePercent = 0;
+            double iexMarketPercent = 0;
+            int iexVolume = 0;
+            int avgTotalVolume = 0;
+            double iexBidPrice = 0;
+            int iexBidSize = 0;
+            double iexAskPrice = 0;
+            int iexAskSize = 0;
+            long marketCap = 0;
+            double week52High = 0;
+            double week52Low = 0;
+            double ytdChange = 0;
+            double peRatio = 0;
+            long lastTradeTime = 0;
+            boolean isUSMarketOpen = false;
+
             try {
                 assert jsonObject != null;
-                infoAboutStock = jsonObject.getString("companyName");
+                symbol = jsonObject.getString(CurrentStockInformation.symbol);
+                companyName = jsonObject.getString(CurrentStockInformation.companyName);
+                calculationPrice = jsonObject.getString(CurrentStockInformation.calculationPrice);
+                open = jsonObject.getInt(CurrentStockInformation.open) ;
+                openTime = jsonObject.getInt(CurrentStockInformation.openTime) ;
+                close = jsonObject.getInt(CurrentStockInformation.close);
+                closeTime = jsonObject.getInt(CurrentStockInformation.closeTime);
+                high = jsonObject.getDouble(CurrentStockInformation.high);
+                low = jsonObject.getDouble(CurrentStockInformation.low);
+                latestPrice = jsonObject.getDouble(CurrentStockInformation.latestPrice);
+                latestSource = jsonObject.getString(CurrentStockInformation.latestSource);
+                latestTime = String.valueOf(jsonObject.get(CurrentStockInformation.latestTime));
+                latestUpdate = jsonObject.getLong(CurrentStockInformation.latestUpdate);
+                latestVolume = jsonObject.getInt(CurrentStockInformation.latestVolume);
+                volume = jsonObject.getInt(CurrentStockInformation.volume);
+                iexRealtimePrice = jsonObject.getDouble(CurrentStockInformation.iexRealtimePrice);
+                iexLastUpdated = jsonObject.getLong(CurrentStockInformation.iexLastUpdated);
+                delayedPrice = jsonObject.getDouble(CurrentStockInformation.delayedPrice);
+                delayedPriceTime = jsonObject.getInt(CurrentStockInformation.delayedPriceTime);
+                oddLotDelayedPrice = jsonObject.getDouble(CurrentStockInformation.oddLotDelayedPrice);
+                oddLotDelayedPriceTime = jsonObject.getInt(CurrentStockInformation.oddLotDelayedPriceTime);
+                extendedPrice = jsonObject.getDouble(CurrentStockInformation.extendedPrice);
+                extendedChange = jsonObject.getDouble(CurrentStockInformation.extendedChange);
+                extendedChangePercent = jsonObject.getDouble(CurrentStockInformation.extendedChangePercent);
+                extendedPriceTime = jsonObject.getInt(CurrentStockInformation.extendedPriceTime);
+                previousClose = jsonObject.getDouble(CurrentStockInformation.previousClose);
+                previousVolume = jsonObject.getInt(CurrentStockInformation.previousVolume);
+                change = jsonObject.getDouble(CurrentStockInformation.change);
+                changePercent = jsonObject.getDouble(CurrentStockInformation.changePercent);
+                iexMarketPercent = jsonObject.getDouble(CurrentStockInformation.iexMarketPercent);
+                iexVolume = jsonObject.getInt(CurrentStockInformation.iexVolume);
+                avgTotalVolume = jsonObject.getInt(CurrentStockInformation.avgTotalVolume);
+                iexBidPrice = jsonObject.getDouble(CurrentStockInformation.iexBidPrice);
+                iexBidSize = jsonObject.getInt(CurrentStockInformation.iexBidSize);
+                iexAskPrice = jsonObject.getDouble(CurrentStockInformation.iexAskPrice);
+                iexAskSize = jsonObject.getInt(CurrentStockInformation.iexAskSize);
+                marketCap = jsonObject.getLong(CurrentStockInformation.marketCap);
+                week52High = jsonObject.getDouble(CurrentStockInformation.week52High);
+                week52Low = jsonObject.getDouble(CurrentStockInformation.week52Low);
+                ytdChange = jsonObject.getDouble(CurrentStockInformation.ytdChange);
+                peRatio = jsonObject.getDouble(CurrentStockInformation.peRatio);
+                lastTradeTime = jsonObject.getLong(CurrentStockInformation.lastTradeTime);
+                isUSMarketOpen = jsonObject.getBoolean(CurrentStockInformation.isUSMarketOpen);
+
+
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            String s = String.format("insert into stock_quote (companyName) values ('%s')", infoAboutStock);
+            String symbolQuery = String.format("INSERT INTO stock_exchange.stock_quote (symbol, companyName, calculationPrice, open, openTime, close, " +
+                            "closeTime, high, low, " +
+                            "latestPrice, latestSource, latestTime, latestUpdate, latestVolume, volume, iexRealtimePrice, " +
+                            "iexLastUpdated, delayedPrice, delayedPriceTime, oddLotDelayedPrice, oddLotDelayedPriceTime, extendedPrice, " +
+                            "extendedChange, extendedChangePercent, extendedPriceTime, previousClose, previousVolume, `change`, " +
+                            "changePercent, iexMarketPercent, iexVolume, avgTotalVolume, iexBidPrice, iexBidSize, iexAskPrice, " +
+                            "iexAskSize, marketCap, week52High, week52Low, ytdChange, peRatio, lastTradeTime, isUSMarketOpen) VALUES ('%s', '%s', '%s', %d, %d, %d, %d, %f, %f, %f, '%s', '%s', %d, %d, %d, " +
+                            "%f, %d, %f, %d,  %f, %d, %f, %f, %f, %d, %f, %d, %f, %f, %f, %d, %d, %f, %d, %f, %d, %d, %f, %f, %f, %f, %d, %b" +
+                            ")", symbol,
+                    companyName, calculationPrice, open, openTime, close, closeTime, high, low, latestPrice, latestSource, latestTime,
+                    latestUpdate, latestVolume, volume, iexRealtimePrice, iexLastUpdated, delayedPrice, delayedPriceTime, oddLotDelayedPrice, oddLotDelayedPriceTime, extendedPrice,
+                    extendedChange, extendedChangePercent, extendedPriceTime, previousClose, previousVolume, change, changePercent, iexMarketPercent, iexVolume, avgTotalVolume, iexBidPrice,
+                    iexBidSize, iexAskPrice, iexAskSize, marketCap, week52High, week52Low, ytdChange, peRatio, lastTradeTime, isUSMarketOpen);
+//            String companyNameQuery = String.format("insert into stock_quote (companyName) values ('%s')", companyName);
+//            String highQuery = String.format("insert into stock_quote (high) values (%f)", high);
             try {
-                statement.executeUpdate(s);
+                statement.executeUpdate(symbolQuery);
+//                statement.executeUpdate(companyNameQuery);
+//                statement.executeUpdate(highQuery);
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            System.out.println(infoAboutStock);
+            System.out.println(companyName);
 
         }
     }
