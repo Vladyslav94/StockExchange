@@ -7,6 +7,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.io.IOException;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
 
@@ -41,8 +42,36 @@ public class StartStockApp implements CommandLineRunner {
         };
         Thread thread2 = new Thread(runnable2);
 
+        Runnable runnable3 = new Runnable() {
+            @Override
+            public void run() {
+                ResultSet resultSet = null;
+                while (true) {
+                    try {
+                        resultSet = getDataFromWeb.statement.executeQuery("select companyName from stock_exchange.stock_quote order by changePercent DESC limit 5;");
+                        while (resultSet.next()) {
+                            String companyName = resultSet.getString("companyName");
+                            System.out.println(companyName);
+                        }
+                        System.out.println();
+
+                    } catch (SQLException throwables) {
+                        throwables.printStackTrace();
+                    }
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+            }
+        };
+        Thread thread3 = new Thread(runnable3);
+
         thread1.start();
         thread2.start();
+        thread3.start();
 
 
     }

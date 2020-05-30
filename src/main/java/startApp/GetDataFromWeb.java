@@ -191,8 +191,8 @@ public class GetDataFromWeb extends Thread {
                 symbol = jsonObject.getString(CurrentStockInformation.symbol);
                 companyName = jsonObject.getString(CurrentStockInformation.companyName);
                 calculationPrice = jsonObject.getString(CurrentStockInformation.calculationPrice);
-                open = jsonObject.getInt(CurrentStockInformation.open) ;
-                openTime = jsonObject.getInt(CurrentStockInformation.openTime) ;
+                open = jsonObject.getInt(CurrentStockInformation.open);
+                openTime = jsonObject.getInt(CurrentStockInformation.openTime);
                 close = jsonObject.getInt(CurrentStockInformation.close);
                 closeTime = jsonObject.getInt(CurrentStockInformation.closeTime);
                 high = jsonObject.getDouble(CurrentStockInformation.high);
@@ -249,16 +249,12 @@ public class GetDataFromWeb extends Thread {
                     latestUpdate, latestVolume, volume, iexRealtimePrice, iexLastUpdated, delayedPrice, delayedPriceTime, oddLotDelayedPrice, oddLotDelayedPriceTime, extendedPrice,
                     extendedChange, extendedChangePercent, extendedPriceTime, previousClose, previousVolume, change, changePercent, iexMarketPercent, iexVolume, avgTotalVolume, iexBidPrice,
                     iexBidSize, iexAskPrice, iexAskSize, marketCap, week52High, week52Low, ytdChange, peRatio, lastTradeTime, isUSMarketOpen);
-//            String companyNameQuery = String.format("insert into stock_quote (companyName) values ('%s')", companyName);
-//            String highQuery = String.format("insert into stock_quote (high) values (%f)", high);
+
             try {
                 statement.executeUpdate(symbolQuery);
-//                statement.executeUpdate(companyNameQuery);
-//                statement.executeUpdate(highQuery);
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            System.out.println(companyName);
 
         }
     }
