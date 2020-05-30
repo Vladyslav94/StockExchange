@@ -45,24 +45,59 @@ public class StartStockApp implements CommandLineRunner {
         Runnable runnable3 = new Runnable() {
             @Override
             public void run() {
-                ResultSet resultSet = null;
-                while (true) {
-                    try {
-                        resultSet = getDataFromWeb.statement.executeQuery("select companyName from stock_exchange.stock_quote order by changePercent DESC limit 5;");
-                        while (resultSet.next()) {
-                            String companyName = resultSet.getString("companyName");
-                            System.out.println(companyName);
-                        }
-                        System.out.println();
+                //need this count to avoid printing new line before data appears on the screen
+                int count = 0;
+                //for printing title before each block of displayed data
+                int count2 = 0;
 
+                while (true) {
+                    //The most recent 5 companies that have the greatest change percent in stock value
+                    try (ResultSet resultSetForGreatestChangePercent = getDataFromWeb.statementForSelectingData.executeQuery("select companyName, changePercent from stock_exchange.stock_quote order by changePercent DESC limit 5;");) {
+                        while (resultSetForGreatestChangePercent.next()) {
+                            if (count2 == 0) {
+                                System.out.println("The most recent 5 companies that have the greatest change percent in stock value:");
+                            }
+                            String companyName = resultSetForGreatestChangePercent.getString("companyName");
+                            double changePercent = resultSetForGreatestChangePercent.getDouble("changePercent");
+                            System.out.println(companyName + " - " + changePercent);
+                            count++;
+                            count2++;
+                        }
+                        count2 = 0;
+                        if (count > 0) {
+                            System.out.println();
+                        }
                     } catch (SQLException throwables) {
                         throwables.printStackTrace();
                     }
+                    //The top 5 highest value stocks (in order – largest first, then order by company name)
+                    try (ResultSet resultSetForHighestStockValue = getDataFromWeb.statementForSelectingData.executeQuery("select companyName, high from stock_exchange.stock_quote order by high DESC, companyName DESC limit 5;");) {
+                        while (resultSetForHighestStockValue.next()) {
+                            if (count2 == 0) {
+                                System.out.println("The top 5 highest value stocks:");
+                            }
+                            String companyName = resultSetForHighestStockValue.getString("companyName");
+                            double highestValue = resultSetForHighestStockValue.getDouble("high");
+                            System.out.println(companyName + " - " + highestValue);
+                            count++;
+                            count2++;
+                        }
+                        count2 = 0;
+                        if (count > 0) {
+                            System.out.println();
+                        }
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+
+
                     try {
                         Thread.sleep(5000);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
+
+
                 }
 
             }

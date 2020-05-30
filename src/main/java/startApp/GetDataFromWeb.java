@@ -18,9 +18,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 @Service
 public class GetDataFromWeb extends Thread {
-    final Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/stock_exchange?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC", "dbadmin", "Theaternimda1");
+    private final Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/stock_exchange?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC", "dbadmin", "Theaternimda1");
     final Statement statement = connection.createStatement();
-    static final LinkedBlockingQueue<String> storageForEnabledStock = new LinkedBlockingQueue<>();
+    Statement statementForSelectingData = connection.createStatement();
+    private static final LinkedBlockingQueue<String> storageForEnabledStock = new LinkedBlockingQueue<>();
 
     public GetDataFromWeb() throws SQLException {
     }
@@ -96,7 +97,14 @@ public class GetDataFromWeb extends Thread {
             scanner.close();
         }
 
-        JSONArray jsonArray = new JSONArray(inline.toString());
+        //if JSON is not recognized - reattempt
+        JSONArray jsonArray = null;
+        try {
+            jsonArray = new JSONArray(inline.toString());
+        } catch (JSONException e) {
+            getStockThatEnabled();
+            return;
+        }
 
         for (int i = 0; i < jsonArray.length(); i++) {
             JSONObject jsonObject = jsonArray.getJSONObject(i);
@@ -253,7 +261,7 @@ public class GetDataFromWeb extends Thread {
             try {
                 statement.executeUpdate(symbolQuery);
             } catch (SQLException e) {
-                e.printStackTrace();
+
             }
 
         }
