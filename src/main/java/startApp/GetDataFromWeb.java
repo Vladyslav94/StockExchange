@@ -29,7 +29,7 @@ public class GetDataFromWeb extends Thread {
     public void connectToDB() throws SQLException {
         statement.execute("create table stock_quote\n" +
                 "(\n" +
-                "\tsymbol varchar(20) null,\n" +
+                "\tsymbol varchar(20) not null primary key,\n" +
                 "\tcompanyName varchar(255) null,\n" +
                 "\tcalculationPrice varchar(20) null,\n" +
                 "\topen int null,\n" +
@@ -77,6 +77,7 @@ public class GetDataFromWeb extends Thread {
     }
 
     public void getStockThatEnabled() throws IOException, JSONException {
+        boolean isCompaniesAvailable = true;
         //getting json data about stock from remote server, parsing and putting to shared queue
         URL url = new URL("https://sandbox.iexapis.com/stable/ref-data/symbols?token=Tpk_ee567917a6b640bb8602834c9d30e571");
         HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
@@ -106,14 +107,23 @@ public class GetDataFromWeb extends Thread {
             return;
         }
 
-        for (int i = 0; i < jsonArray.length(); i++) {
-            JSONObject jsonObject = jsonArray.getJSONObject(i);
-            String name = jsonObject.getString("symbol");
-            boolean isTrue = jsonObject.getBoolean("isEnabled");
-            if (isTrue) {
-                storageForEnabledStock.offer(name);
-            }
-        }
+
+                while (isCompaniesAvailable){
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject jsonObject = jsonArray.getJSONObject(i);
+                        String name = jsonObject.getString("symbol");
+                        boolean isTrue = jsonObject.getBoolean("isEnabled");
+                        if (isTrue) {
+                            storageForEnabledStock.offer(name);
+                        }
+                        if(i == jsonArray.length() -1)
+                           isCompaniesAvailable = false;
+                    }
+                }
+
+        getStockThatEnabled();
+
+
     }
 
     public void getDataAbout() throws InterruptedException, IOException {
@@ -244,6 +254,7 @@ public class GetDataFromWeb extends Thread {
             } catch (JSONException e) {
                 e.printStackTrace();
             }
+            //as a symbol is unique, the next iteration the stock data will be updated
             String symbolQuery = String.format("INSERT INTO stock_exchange.stock_quote (symbol, companyName, calculationPrice, open, openTime, close, " +
                             "closeTime, high, low, " +
                             "latestPrice, latestSource, latestTime, latestUpdate, latestVolume, volume, iexRealtimePrice, " +
@@ -251,17 +262,23 @@ public class GetDataFromWeb extends Thread {
                             "extendedChange, extendedChangePercent, extendedPriceTime, previousClose, previousVolume, `change`, " +
                             "changePercent, iexMarketPercent, iexVolume, avgTotalVolume, iexBidPrice, iexBidSize, iexAskPrice, " +
                             "iexAskSize, marketCap, week52High, week52Low, ytdChange, peRatio, lastTradeTime, isUSMarketOpen) VALUES ('%s', '%s', '%s', %d, %d, %d, %d, %f, %f, %f, '%s', '%s', %d, %d, %d, " +
-                            "%f, %d, %f, %d,  %f, %d, %f, %f, %f, %d, %f, %d, %f, %f, %f, %d, %d, %f, %d, %f, %d, %d, %f, %f, %f, %f, %d, %b" +
-                            ")", symbol,
+                            "%f, %d, %f, %d,  %f, %d, %f, %f, %f, %d, %f, %d, %f, %f, %f, %d, %d, %f, %d, %f, %d, %d, %f, %f, %f, %f, %d, %b) ON DUPLICATE KEY UPDATE companyName = '%s', calculationPrice = '%s', open = %d, openTime = %d," +
+                            " close = %d, closeTime = %d, high = %f, low = %f, latestPrice = %f, latestSource = '%s', latestTime = '%s', latestUpdate = %d, latestVolume = %d, volume = %d, iexRealtimePrice = %f, " +
+                            "iexLastUpdated = %d, delayedPrice = %f, delayedPriceTime = %d, oddLotDelayedPrice = %f, oddLotDelayedPriceTime = %d, extendedPrice = %f, extendedChange = %f, extendedChangePercent = %f, extendedPriceTime = %d, previousClose = %f, " +
+                            "previousVolume = %d, `change` = %f, changePercent = %f, iexMarketPercent = %f, iexVolume = %d, avgTotalVolume = %d, iexBidPrice = %f, iexBidSize = %d, iexAskPrice = %f, " +
+                            "iexAskSize = %d, marketCap = %d, week52High = %f, week52Low = %f, ytdChange = %f, peRatio = %f, lastTradeTime = %d, isUSMarketOpen = %b", symbol,
                     companyName, calculationPrice, open, openTime, close, closeTime, high, low, latestPrice, latestSource, latestTime,
                     latestUpdate, latestVolume, volume, iexRealtimePrice, iexLastUpdated, delayedPrice, delayedPriceTime, oddLotDelayedPrice, oddLotDelayedPriceTime, extendedPrice,
+                    extendedChange, extendedChangePercent, extendedPriceTime, previousClose, previousVolume, change, changePercent, iexMarketPercent, iexVolume, avgTotalVolume, iexBidPrice,
+                    iexBidSize, iexAskPrice, iexAskSize, marketCap, week52High, week52Low, ytdChange, peRatio, lastTradeTime, isUSMarketOpen, companyName, calculationPrice, open, openTime, close, closeTime, high, low,
+                    latestPrice, latestSource, latestTime, latestUpdate, latestVolume, volume, iexRealtimePrice, iexLastUpdated, delayedPrice, delayedPriceTime, oddLotDelayedPrice, oddLotDelayedPriceTime, extendedPrice,
                     extendedChange, extendedChangePercent, extendedPriceTime, previousClose, previousVolume, change, changePercent, iexMarketPercent, iexVolume, avgTotalVolume, iexBidPrice,
                     iexBidSize, iexAskPrice, iexAskSize, marketCap, week52High, week52Low, ytdChange, peRatio, lastTradeTime, isUSMarketOpen);
 
             try {
                 statement.executeUpdate(symbolQuery);
             } catch (SQLException e) {
-
+                e.printStackTrace();
             }
 
         }
