@@ -17,6 +17,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 @Service
 public class GetDataFromWeb {
+    //set your DB name, login and password here
     private final Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/stock_exchange?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC", "dbadmin", "Theaternimda1");
     final Statement statement = connection.createStatement();
     Statement statementForSelectingData = connection.createStatement();
@@ -160,7 +161,8 @@ public class GetDataFromWeb {
             return;
         }
 
-        while (isCompaniesAvailable) {
+        outer:
+        while (true) {
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
                 String name = jsonObject.getString("symbol");
@@ -169,7 +171,7 @@ public class GetDataFromWeb {
                     storageForEnabledStock.offer(name);
                 }
                 if (i == jsonArray.length() - 1)
-                    isCompaniesAvailable = false;
+                    break outer;
             }
         }
 
