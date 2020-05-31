@@ -3,7 +3,6 @@ package startApp;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.springframework.beans.propertyeditors.CurrencyEditor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -17,7 +16,7 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 
 @Service
-public class GetDataFromWeb extends Thread {
+public class GetDataFromWeb {
     private final Connection connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/stock_exchange?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC", "dbadmin", "Theaternimda1");
     final Statement statement = connection.createStatement();
     Statement statementForSelectingData = connection.createStatement();
@@ -27,6 +26,7 @@ public class GetDataFromWeb extends Thread {
     }
 
     public void connectToDB() throws SQLException {
+        //table for main data
         statement.execute("create table stock_quote\n" +
                 "(\n" +
                 "\tsymbol varchar(20) not null primary key,\n" +
@@ -74,6 +74,7 @@ public class GetDataFromWeb extends Thread {
                 "\tisUSMarketOpen BIT null\n" +
                 ");\n" +
                 "\n");
+
         //table for logging changes
         statement.execute("create table changes_log\n" +
                 "(\n" +
@@ -147,7 +148,36 @@ public class GetDataFromWeb extends Thread {
     public void getStockThatEnabled() throws IOException, JSONException {
         boolean isCompaniesAvailable = true;
         //getting json data about stock from remote server, parsing and putting to shared queue
-        URL url = new URL("https://sandbox.iexapis.com/stable/ref-data/symbols?token=Tpk_ee567917a6b640bb8602834c9d30e571");
+        String urlAddress = "https://sandbox.iexapis.com/stable/ref-data/symbols?token=Tpk_ee567917a6b640bb8602834c9d30e571";
+        String inline = takingWholeStringFromServer(urlAddress);
+
+        //if JSON is not recognized - reattempt
+        JSONArray jsonArray;
+        try {
+            jsonArray = new JSONArray(inline);
+        } catch (JSONException e) {
+            getStockThatEnabled();
+            return;
+        }
+
+        while (isCompaniesAvailable) {
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                String name = jsonObject.getString("symbol");
+                boolean isTrue = jsonObject.getBoolean("isEnabled");
+                if (isTrue) {
+                    storageForEnabledStock.offer(name);
+                }
+                if (i == jsonArray.length() - 1)
+                    isCompaniesAvailable = false;
+            }
+        }
+
+        getStockThatEnabled();
+    }
+
+    private String takingWholeStringFromServer(String urlAddress) throws IOException {
+        URL url = new URL(urlAddress);
         HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
         httpURLConnection.setRequestMethod("GET");
         httpURLConnection.connect();
@@ -165,33 +195,7 @@ public class GetDataFromWeb extends Thread {
             }
             scanner.close();
         }
-
-        //if JSON is not recognized - reattempt
-        JSONArray jsonArray = null;
-        try {
-            jsonArray = new JSONArray(inline.toString());
-        } catch (JSONException e) {
-            getStockThatEnabled();
-            return;
-        }
-
-
-        while (isCompaniesAvailable) {
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject jsonObject = jsonArray.getJSONObject(i);
-                String name = jsonObject.getString("symbol");
-                boolean isTrue = jsonObject.getBoolean("isEnabled");
-                if (isTrue) {
-                    storageForEnabledStock.offer(name);
-                }
-                if (i == jsonArray.length() - 1)
-                    isCompaniesAvailable = false;
-            }
-        }
-
-        getStockThatEnabled();
-
-
+        return inline.toString();
     }
 
     public void getDataAbout() throws InterruptedException, IOException {
@@ -201,29 +205,11 @@ public class GetDataFromWeb extends Thread {
             //send for taking data about current stock
             String linkForTakingDataAboutStock =
                     String.format("https://sandbox.iexapis.com/stable/stock/%s/quote?token=Tpk_ee567917a6b640bb8602834c9d30e571", stockToGet);
-            URL url = new URL(linkForTakingDataAboutStock);
-            HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
-            httpURLConnection.setRequestMethod("GET");
-            httpURLConnection.connect();
-
-            int response = httpURLConnection.getResponseCode();
-            StringBuilder inline = new StringBuilder();
-
-            if (response != 200)
-                throw new RuntimeException("Error while parsing" + response);
-            else {
-                Scanner scanner = new Scanner(url.openStream());
-                while (scanner.hasNext()) {
-                    //getting JSON about stock
-                    inline.append(scanner.nextLine());
-
-                }
-                scanner.close();
-            }
+            String inline = takingWholeStringFromServer(linkForTakingDataAboutStock);
             //stock JSON process
             JSONObject jsonObject = null;
             try {
-                jsonObject = new JSONObject(inline.toString().replaceAll("null", "0"));
+                jsonObject = new JSONObject(inline.replaceAll("null", "0"));
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -340,9 +326,9 @@ public class GetDataFromWeb extends Thread {
             try {
                 statement.executeUpdate(symbolQuery);
             } catch (SQLException e) {
-                e.printStackTrace();
+                System.out.println("Oops, something wrong with the data. Trying the next one");
+                System.out.println();
             }
-
         }
     }
 

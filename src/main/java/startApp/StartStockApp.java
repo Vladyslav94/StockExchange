@@ -23,26 +23,26 @@ public class StartStockApp implements CommandLineRunner {
 
 
     public void run(String... args) throws SQLException {
-        getDataFromWeb.connectToDB();
-        Runnable runnable1 = () -> {
+//        getDataFromWeb.connectToDB();
+        Runnable takingDataFromAPI = () -> {
             try {
                 getDataFromWeb.getStockThatEnabled();
             } catch (IOException | JSONException e) {
                 e.printStackTrace();
             }
         };
-        Thread thread1 = new Thread(runnable1);
+        Thread thread1 = new Thread(takingDataFromAPI);
 
-        Runnable runnable2 = () -> {
+        Runnable puttingDataToDB = () -> {
             try {
                 getDataFromWeb.getDataAbout();
             } catch (InterruptedException | IOException e) {
                 e.printStackTrace();
             }
         };
-        Thread thread2 = new Thread(runnable2);
+        Thread thread2 = new Thread(puttingDataToDB);
 
-        Runnable runnable3 = new Runnable() {
+        Runnable gettingDataFromDB = new Runnable() {
             @Override
             public void run() {
                 //need this count to avoid printing new line before data appears on the screen
@@ -67,8 +67,8 @@ public class StartStockApp implements CommandLineRunner {
                         if (count > 0) {
                             System.out.println();
                         }
-                    } catch (SQLException throwables) {
-                        throwables.printStackTrace();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
                     }
                     //The top 5 highest value stocks (in order – largest first, then order by company name)
                     try (ResultSet resultSetForHighestStockValue = getDataFromWeb.statementForSelectingData.executeQuery("select companyName, high from stock_exchange.stock_quote order by high DESC, companyName DESC limit 5;");) {
@@ -101,14 +101,12 @@ public class StartStockApp implements CommandLineRunner {
 
             }
         };
-        Thread thread3 = new Thread(runnable3);
+        Thread thread3 = new Thread(gettingDataFromDB);
 
         thread1.start();
         thread2.start();
         thread3.start();
 
-
     }
-
 
 }
