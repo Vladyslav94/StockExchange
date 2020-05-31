@@ -74,6 +74,74 @@ public class GetDataFromWeb extends Thread {
                 "\tisUSMarketOpen BIT null\n" +
                 ");\n" +
                 "\n");
+        //table for logging changes
+        statement.execute("create table changes_log\n" +
+                "(\n" +
+                "\tchangeNumber int auto_increment,\n " +
+                "\tsymbol varchar(20) not null,\n" +
+                "\tcompanyName varchar(255) null,\n" +
+                "\tcalculationPrice varchar(20) null,\n" +
+                "\topen int null,\n" +
+                "\topenTime int null,\n" +
+                "\tclose int null,\n" +
+                "\tcloseTime int null,\n" +
+                "\thigh double null,\n" +
+                "\tlow double null,\n" +
+                "\tlatestPrice double null,\n" +
+                "\tlatestSource varchar(255) null,\n" +
+                "\tlatestTime varchar(255) null,\n" +
+                "\tlatestUpdate long null,\n" +
+                "\tlatestVolume int null,\n" +
+                "\tvolume int null,\n" +
+                "\tiexRealtimePrice double null,\n" +
+                "\tiexLastUpdated long null,\n" +
+                "\tdelayedPrice double null,\n" +
+                "\tdelayedPriceTime int null,\n" +
+                "\toddLotDelayedPrice double null,\n" +
+                "\toddLotDelayedPriceTime int null,\n" +
+                "\textendedPrice double null,\n" +
+                "\textendedChange double null,\n" +
+                "\textendedChangePercent double null,\n" +
+                "\textendedPriceTime int null,\n" +
+                "\tpreviousClose double null,\n" +
+                "\tpreviousVolume int null,\n" +
+                "\t`change` double null,\n" +
+                "\tchangePercent double null,\n" +
+                "\tiexMarketPercent double null,\n" +
+                "\tiexVolume int null,\n" +
+                "\tavgTotalVolume int null,\n" +
+                "\tiexBidPrice double null,\n" +
+                "\tiexBidSize int null,\n" +
+                "\tiexAskPrice double null,\n" +
+                "\tiexAskSize int null,\n" +
+                "\tmarketCap long null,\n" +
+                "\tweek52High double null,\n" +
+                "\tweek52Low double null,\n" +
+                "\tytdChange double null,\n" +
+                "\tpeRatio double null,\n" +
+                "\tlastTradeTime long null,\n" +
+                "\tisUSMarketOpen BIT null,\n" +
+                "\tprimary key (changeNumber),\n" +
+                "\tforeign key (symbol) references stock_quote(symbol))");
+
+        //log all stock changes over the time by creating a trigger query
+        statement.execute("CREATE TRIGGER changes_update_log AFTER UPDATE ON stock_quote FOR EACH ROW " +
+                "BEGIN IF OLD.high <> new.high THEN " +
+                "INSERT INTO changes_log (symbol, companyName, calculationPrice, open, openTime, close, closeTime, high, low, latestPrice, " +
+                "latestSource, latestTime, latestUpdate, latestVolume, volume, iexRealtimePrice, " +
+                "iexLastUpdated, delayedPrice, delayedPriceTime, oddLotDelayedPrice, oddLotDelayedPriceTime, extendedPrice, " +
+                "extendedChange, extendedChangePercent, extendedPriceTime, previousClose, previousVolume, `change`, " +
+                "changePercent, iexMarketPercent, iexVolume, avgTotalVolume, iexBidPrice, iexBidSize, iexAskPrice, " +
+                "iexAskSize, marketCap, week52High, week52Low, ytdChange, peRatio, lastTradeTime, isUSMarketOpen) VALUES (old.symbol, old.companyName, old.calculationPrice, " +
+                "old.open, old.openTime, old.close, old.closeTime, old.high, old.low, old.latestPrice, " +
+                "old.latestSource, old.latestTime, old.latestUpdate, old.latestVolume, old.volume, old.iexRealtimePrice, " +
+                "old.iexLastUpdated, old.delayedPrice, old.delayedPriceTime, old.oddLotDelayedPrice, old.oddLotDelayedPriceTime, old.extendedPrice, " +
+                "old.extendedChange, old.extendedChangePercent, old.extendedPriceTime, old.previousClose, old.previousVolume, old.`change`, " +
+                "old.changePercent, old.iexMarketPercent, old.iexVolume, old.avgTotalVolume, old.iexBidPrice, old.iexBidSize, old.iexAskPrice, " +
+                "old.iexAskSize, old.marketCap, old.week52High, old.week52Low, old.ytdChange, old.peRatio, old.lastTradeTime, old.isUSMarketOpen); " +
+                "END IF; " +
+                "END;" +
+                "");
     }
 
     public void getStockThatEnabled() throws IOException, JSONException {
@@ -108,18 +176,18 @@ public class GetDataFromWeb extends Thread {
         }
 
 
-                while (isCompaniesAvailable){
-                    for (int i = 0; i < jsonArray.length(); i++) {
-                        JSONObject jsonObject = jsonArray.getJSONObject(i);
-                        String name = jsonObject.getString("symbol");
-                        boolean isTrue = jsonObject.getBoolean("isEnabled");
-                        if (isTrue) {
-                            storageForEnabledStock.offer(name);
-                        }
-                        if(i == jsonArray.length() -1)
-                           isCompaniesAvailable = false;
-                    }
+        while (isCompaniesAvailable) {
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                String name = jsonObject.getString("symbol");
+                boolean isTrue = jsonObject.getBoolean("isEnabled");
+                if (isTrue) {
+                    storageForEnabledStock.offer(name);
                 }
+                if (i == jsonArray.length() - 1)
+                    isCompaniesAvailable = false;
+            }
+        }
 
         getStockThatEnabled();
 
@@ -255,13 +323,7 @@ public class GetDataFromWeb extends Thread {
                 e.printStackTrace();
             }
             //as a symbol is unique, the next iteration the stock data will be updated
-            String symbolQuery = String.format("INSERT INTO stock_exchange.stock_quote (symbol, companyName, calculationPrice, open, openTime, close, " +
-                            "closeTime, high, low, " +
-                            "latestPrice, latestSource, latestTime, latestUpdate, latestVolume, volume, iexRealtimePrice, " +
-                            "iexLastUpdated, delayedPrice, delayedPriceTime, oddLotDelayedPrice, oddLotDelayedPriceTime, extendedPrice, " +
-                            "extendedChange, extendedChangePercent, extendedPriceTime, previousClose, previousVolume, `change`, " +
-                            "changePercent, iexMarketPercent, iexVolume, avgTotalVolume, iexBidPrice, iexBidSize, iexAskPrice, " +
-                            "iexAskSize, marketCap, week52High, week52Low, ytdChange, peRatio, lastTradeTime, isUSMarketOpen) VALUES ('%s', '%s', '%s', %d, %d, %d, %d, %f, %f, %f, '%s', '%s', %d, %d, %d, " +
+            String symbolQuery = String.format("INSERT INTO stock_exchange.stock_quote VALUES ('%s', '%s', '%s', %d, %d, %d, %d, %f, %f, %f, '%s', '%s', %d, %d, %d, " +
                             "%f, %d, %f, %d,  %f, %d, %f, %f, %f, %d, %f, %d, %f, %f, %f, %d, %d, %f, %d, %f, %d, %d, %f, %f, %f, %f, %d, %b) ON DUPLICATE KEY UPDATE companyName = '%s', calculationPrice = '%s', open = %d, openTime = %d," +
                             " close = %d, closeTime = %d, high = %f, low = %f, latestPrice = %f, latestSource = '%s', latestTime = '%s', latestUpdate = %d, latestVolume = %d, volume = %d, iexRealtimePrice = %f, " +
                             "iexLastUpdated = %d, delayedPrice = %f, delayedPriceTime = %d, oddLotDelayedPrice = %f, oddLotDelayedPriceTime = %d, extendedPrice = %f, extendedChange = %f, extendedChangePercent = %f, extendedPriceTime = %d, previousClose = %f, " +
